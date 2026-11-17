@@ -11,7 +11,7 @@ The dataset used in this project was retrieved from Kaggle (an extension of the 
 
 For easy implementation in Python and reproducible execution, the dataset is hosted on GitHub. The raw dataset can be accessed [here](https://raw.githubusercontent.com/Chakrios8/Heart_Disease_Prediction/refs/heads/main/heart.csv).
 
-Contained in this dataset are **1,025 individual patient instances** and the following 14 clinical attributes:
+The raw dataset contains **1,025 patient instances**. During data preprocessing, duplicate entries are removed programmatically (`df.drop_duplicates()`), yielding **302 unique patient records** (138 healthy individuals, 164 diagnosed with heart disease) across the following 14 clinical attributes:
 
 | Feature | Description |
 | :--- | :--- |
@@ -42,7 +42,7 @@ Contained in this dataset are **1,025 individual patient instances** and the fol
 
 ![Prevalence by Sex](images/sex_distribution.png)
 
-- **Gender Distribution:** In the dataset sample, a higher proportion of males are diagnosed with heart disease compared to females.
+- **Gender Distribution:** In the deduplicated patient cohort ($N = 302$), males represent approximately 68% of the cohort. While males constitute the majority of absolute disease cases, females exhibit a high proportional prevalence within their sub-cohort.
 
 ![Correlation Heatmap](images/correlation_matrix.png)
 
@@ -54,16 +54,25 @@ Contained in this dataset are **1,025 individual patient instances** and the fol
 
 ![Feature Distributions](images/feature_distributions.png)
 
-- **Age Distribution:** Patients without heart disease in this dataset tend to skew older on average (late 40s to early 60s), which aligns with clinical screening patterns where older cohorts undergo more diagnostic evaluations.
+- **Age Distribution:** Patients without heart disease in this dataset tend to skew older on average (late 40s to early 60s), which aligns with clinical referral patterns where older cohorts undergo more diagnostic evaluations.
 - **ST Depression (`oldpeak`):** Patients diagnosed with heart disease frequently exhibit lower `oldpeak` scores (clustering near 0), whereas higher ST depressions correlate strongly with absence of primary disease in this sample.
 - **Maximum Heart Rate (`thalach`):** Higher maximum heart rate scores (ranging between 150-175 bpm) show a strong positive association with heart disease diagnosis.
 
 # Data Pre-Processing
 
-The preprocessing pipeline includes:
+The preprocessing pipeline ensures data integrity, removes leakage, and standardizes variables:
 
-1. **Feature-Target Separation:** Dividing the 14 columns into predictor matrix $X$ (first 13 clinical variables) and ground-truth vector $y$ (`target`).
-2. **Feature Scaling:** Standardizing features using `StandardScaler` to remove variance skewness and ensure distance-based models (such as KNN and Logistic Regression) converge reliably:
+1. **Deduplication:** The raw Kaggle dataset contains 723 repeated rows resulting from oversampling the original 302 Cleveland Clinic patients. We programmatically deduplicate the dataset in-code to guarantee that identical patient records never appear across both training and testing splits:
+
+```python
+# Deduplicate patient records to prevent train-test data leakage
+df = df.drop_duplicates().reset_index(drop=True)
+print(f"Unique patient records after deduplication: {df.shape[0]}")  # 302 unique patients
+```
+
+2. **Feature-Target Separation:** Dividing the 14 columns into predictor matrix $X$ (first 13 clinical variables) and ground-truth vector $y$ (`target`).
+
+3. **Feature Scaling:** Standardizing features using `StandardScaler` to remove variance skewness and ensure distance-based models (such as KNN and Logistic Regression) converge reliably:
 
 ```python
 X = df.iloc[:, :13]
@@ -73,7 +82,7 @@ scaler = StandardScaler()
 X_scaled = scaler.fit_transform(X)
 ```
 
-3. **Train-Test Split:** Partitioning into an 80% training set (820 instances) and a 20% held-out test set (205 instances) with a fixed random seed for strict reproducibility:
+4. **Train-Test Split:** Partitioning into an 80% training set (241 instances) and a 20% held-out test set (61 instances: 29 healthy `class 0`, 32 heart disease `class 1`) with a fixed random seed for strict reproducibility:
 
 ```python
 X_train, X_test, y_train, y_test = train_test_split(
@@ -90,7 +99,7 @@ We evaluated four supervised machine learning algorithms covering eager linear, 
 3. **K-Nearest Neighbors** (Lazy Learner, Instance-based)
 4. **Decision Tree Classifier** (Eager Learner, Tree-based)
 
-Hyperparameter optimization was systematically performed using `GridSearchCV` with **5-fold cross-validation (`cv=5`)** to identify the best hyperparameter configurations.
+Hyperparameter optimization was systematically performed using `GridSearchCV` with **5-fold cross-validation (`cv=5`)** to identify the best hyperparameter configurations on the clean training set ($N = 241$).
 
 ---
 
@@ -112,11 +121,11 @@ clf.fit(X_train, y_train)
 ```
 
 ### Best Hyperparameters:
-- **Penalty:** `None` (no regularization penalty)
-- **C:** `100`
+- **Penalty:** `l2`
+- **C:** `0.1`
 - **Solver:** `newton-cg`
 - **Max Iterations:** `100`
-- **5-Fold Cross-Validation Accuracy:** `83.41%`
+- **5-Fold Cross-Validation Accuracy:** `80.92%`
 
 ---
 
@@ -148,10 +157,10 @@ knneighbors.fit(X_train, y_train)
 ```
 
 ### Best Hyperparameters:
-- **n_neighbors:** `1`
+- **n_neighbors:** `5`
 - **weights:** `uniform`
 - **metric:** `manhattan`
-- **5-Fold Cross-Validation Accuracy:** `99.27%`
+- **5-Fold Cross-Validation Accuracy:** `83.82%`
 
 ---
 
@@ -172,41 +181,41 @@ dtc.fit(X_train, y_train)
 ```
 
 ### Best Hyperparameters:
-- **criterion:** `gini`
-- **splitter:** `best`
-- **max_leaf_nodes:** `20`
-- **5-Fold Cross-Validation Accuracy:** `88.90%`
+- **criterion:** `entropy`
+- **splitter:** `random`
+- **max_leaf_nodes:** `10`
+- **5-Fold Cross-Validation Accuracy:** `79.67%`
 
 # Results
 
-All models were evaluated on the held-out test set ($N = 205$).
+All models were evaluated on the held-out test set ($N = 61$ instances: 29 healthy `class 0`, 32 heart disease `class 1`).
 
 ---
 
 ## 1. Logistic Regression
 
 ```python
-lr = LogisticRegression(C=100, penalty=None, solver='newton-cg', max_iter=100, random_state=1234)
+lr = LogisticRegression(C=0.1, penalty='l2', solver='newton-cg', max_iter=100, random_state=1234)
 lr.fit(X_train, y_train)
 ```
 
-- **Test Accuracy:** **85.37%**
+- **Test Accuracy:** **88.52%** (54 / 61 correct)
 
 **Confusion Matrix:**
 
 | | Predicted 0 (No Disease) | Predicted 1 (Disease) | Total Actual |
 | :--- | :---: | :---: | :---: |
-| **Actual 0 (No Disease)** | **79** (TN) | 22 (FP) | 101 |
-| **Actual 1 (Disease)** | 8 (FN) | **96** (TP) | 104 |
+| **Actual 0 (No Disease)** | **25** (TN) | 4 (FP) | 29 |
+| **Actual 1 (Disease)** | 3 (FN) | **29** (TP) | 32 |
 
 **Classification Report:**
 
 | Class | Precision | Recall | F1-Score | Support |
 | :--- | :---: | :---: | :---: | :---: |
-| **0 (No Disease)** | 0.91 | 0.78 | 0.84 | 101 |
-| **1 (Disease)** | 0.81 | 0.92 | 0.86 | 104 |
-| **Macro Average** | 0.86 | 0.85 | 0.85 | 205 |
-| **Weighted Average** | 0.86 | 0.85 | 0.85 | 205 |
+| **0 (No Disease)** | 0.89 | 0.86 | 0.88 | 29 |
+| **1 (Disease)** | 0.88 | 0.91 | 0.89 | 32 |
+| **Macro Average** | 0.89 | 0.89 | 0.89 | 61 |
+| **Weighted Average** | 0.89 | 0.89 | 0.89 | 61 |
 
 ---
 
@@ -217,77 +226,77 @@ gnb = GaussianNB()
 gnb.fit(X_train, y_train)
 ```
 
-- **Test Accuracy:** **83.90%**
+- **Test Accuracy:** **81.97%** (50 / 61 correct)
 
 **Confusion Matrix:**
 
 | | Predicted 0 (No Disease) | Predicted 1 (Disease) | Total Actual |
 | :--- | :---: | :---: | :---: |
-| **Actual 0 (No Disease)** | **79** (TN) | 22 (FP) | 101 |
-| **Actual 1 (Disease)** | 11 (FN) | **93** (TP) | 104 |
+| **Actual 0 (No Disease)** | **24** (TN) | 5 (FP) | 29 |
+| **Actual 1 (Disease)** | 6 (FN) | **26** (TP) | 32 |
 
 **Classification Report:**
 
 | Class | Precision | Recall | F1-Score | Support |
 | :--- | :---: | :---: | :---: | :---: |
-| **0 (No Disease)** | 0.88 | 0.78 | 0.83 | 101 |
-| **1 (Disease)** | 0.81 | 0.89 | 0.85 | 104 |
-| **Macro Average** | 0.84 | 0.84 | 0.84 | 205 |
-| **Weighted Average** | 0.84 | 0.84 | 0.84 | 205 |
+| **0 (No Disease)** | 0.80 | 0.83 | 0.81 | 29 |
+| **1 (Disease)** | 0.84 | 0.81 | 0.83 | 32 |
+| **Macro Average** | 0.82 | 0.82 | 0.82 | 61 |
+| **Weighted Average** | 0.82 | 0.82 | 0.82 | 61 |
 
 ---
 
 ## 3. K-Nearest Neighbors
 
 ```python
-knn = KNeighborsClassifier(n_neighbors=1, metric='manhattan', weights='uniform')
+knn = KNeighborsClassifier(n_neighbors=5, metric='manhattan', weights='uniform')
 knn.fit(X_train, y_train)
 ```
 
-- **Test Accuracy:** **100.00%**
+- **Test Accuracy:** **80.33%** (49 / 61 correct)
 
 **Confusion Matrix:**
 
 | | Predicted 0 (No Disease) | Predicted 1 (Disease) | Total Actual |
 | :--- | :---: | :---: | :---: |
-| **Actual 0 (No Disease)** | **101** (TN) | 0 (FP) | 101 |
-| **Actual 1 (Disease)** | 0 (FN) | **104** (TP) | 104 |
+| **Actual 0 (No Disease)** | **23** (TN) | 6 (FP) | 29 |
+| **Actual 1 (Disease)** | 6 (FN) | **26** (TP) | 32 |
 
 **Classification Report:**
 
 | Class | Precision | Recall | F1-Score | Support |
 | :--- | :---: | :---: | :---: | :---: |
-| **0 (No Disease)** | 1.00 | 1.00 | 1.00 | 101 |
-| **1 (Disease)** | 1.00 | 1.00 | 1.00 | 104 |
-| **Macro Average** | 1.00 | 1.00 | 1.00 | 205 |
-| **Weighted Average** | 1.00 | 1.00 | 1.00 | 205 |
+| **0 (No Disease)** | 0.79 | 0.79 | 0.79 | 29 |
+| **1 (Disease)** | 0.81 | 0.81 | 0.81 | 32 |
+| **Macro Average** | 0.80 | 0.80 | 0.80 | 61 |
+| **Weighted Average** | 0.80 | 0.80 | 0.80 | 61 |
 
 ---
 
 ## 4. Decision Tree Classifier
 
 ```python
-dtree = DecisionTreeClassifier(criterion='gini', splitter='best', max_leaf_nodes=20, random_state=1234)
+dtree = DecisionTreeClassifier(criterion='entropy', splitter='random', max_leaf_nodes=10, random_state=1234)
 dtree.fit(X_train, y_train)
 ```
 
-- **Test Accuracy:** **92.68%**
+- **Test Accuracy:** **80.33%** (49 / 61 correct)
 
 **Confusion Matrix:**
 
 | | Predicted 0 (No Disease) | Predicted 1 (Disease) | Total Actual |
 | :--- | :---: | :---: | :---: |
-| **Actual 0 (No Disease)** | **92** (TN) | 9 (FP) | 101 |
-| **Actual 1 (Disease)** | 6 (FN) | **98** (TP) | 104 |
+| **Actual 0 (No Disease)** | **24** (TN) | 5 (FP) | 29 |
+| **Actual 1 (Disease)** | 7 (FN) | **25** (TP) | 32 |
 
 **Classification Report:**
 
 | Class | Precision | Recall | F1-Score | Support |
 | :--- | :---: | :---: | :---: | :---: |
-| **0 (No Disease)** | 0.94 | 0.91 | 0.92 | 101 |
-| **1 (Disease)** | 0.92 | 0.94 | 0.93 | 104 |
-| **Macro Average** | 0.93 | 0.93 | 0.93 | 205 |
-| **Weighted Average** | 0.93 | 0.93 | 0.93 | 205 |
+| **0 (No Disease)** | 0.77 | 0.83 | 0.80 | 29 |
+| **1 (Disease)** | 0.83 | 0.78 | 0.81 | 32 |
+| **Macro Average** | 0.80 | 0.81 | 0.80 | 61 |
+| **Weighted Average** | 0.81 | 0.80 | 0.80 | 61 |
 
 ### Decision Tree Architecture:
 ![Decision Tree Diagram](images/decision_tree_visualization.png)
@@ -296,14 +305,14 @@ dtree.fit(X_train, y_train)
 
 ## Model Comparison & Evaluation Summary
 
-The table below summarizes the key evaluation metrics across all four classification models on the test set:
+The table below summarizes the key evaluation metrics across all four classification models on the deduplicated test set ($N = 61$):
 
 | Model | Accuracy | Precision | Recall | F1-Score | ROC-AUC |
 | :--- | :---: | :---: | :---: | :---: | :---: |
-| **Logistic Regression** | 85.37% | 81.36% | 92.31% | 86.49% | 0.939 |
-| **Naive Bayes** | 83.90% | 80.87% | 89.42% | 84.93% | 0.934 |
-| **K-Nearest Neighbors ($k=1$)** | 100.00% | 100.00% | 100.00% | 100.00% | 1.000 |
-| **Decision Tree (`max_leaf_nodes=20`)** | **92.68%** | **91.59%** | **94.23%** | **92.89%** | **0.959** |
+| **Logistic Regression** | **88.52%** | **87.88%** | **90.62%** | **89.23%** | **0.920** |
+| **Gaussian Naive Bayes** | 81.97% | 83.87% | 81.25% | 82.54% | 0.915 |
+| **K-Nearest Neighbors ($k=5$)** | 80.33% | 81.25% | 81.25% | 81.25% | 0.860 |
+| **Decision Tree (`max_leaf_nodes=10`)** | 80.33% | 83.33% | 78.12% | 80.65% | 0.870 |
 
 ### Performance Visualization:
 ![Model Performance Comparison](images/model_comparison.png)
@@ -313,14 +322,11 @@ The table below summarizes the key evaluation metrics across all four classifica
 
 # Conclusion & Discussion
 
-1. **Optimal Practical Classifier:** Among the realistically generalized models, the **Decision Tree Classifier with `max_leaf_nodes=20`** emerged as the top-performing model, achieving **92.68% accuracy, 91.59% precision, 94.23% recall, and an AUC of 0.959**. Its compact 20-node structure provides transparent, interpretable diagnostic logic suitable for clinical audit.
-2. **Analysis of the 100% KNN Accuracy (Data Leakage):**
-   - While K-Nearest Neighbors ($k=1$) attained 100% accuracy, this score is an artifact of **data leakage caused by duplicate rows in the Kaggle dataset**.
-   - Analysis revealed that the 1,025 instances represent **only 302 unique patients duplicated ~3.4 times** (187 patients copied 3x, 114 copied 4x, 1 copied 8x).
-   - Because partitioning occurred without prior deduplication, exact duplicate records appeared in both training and test partitions. An instance-based learner ($k=1$) simply retrieves identical training copies at Euclidean/Manhattan distance $0.0$, resulting in memorization rather than generalization.
-3. **Justification of Decision Tree Pruning:**
-   - An unconstrained decision tree similarly memorizes duplicates and produces 100% accuracy.
-   - Restricting the tree to `max_leaf_nodes=20` serves as an effective **pre-pruning regularization technique**. It prevents the model from assigning isolated leaves to duplicate instances and reduces model variance, yielding an honest, robust test accuracy of 92.68%.
-4. **Parametric Baselines (Logistic Regression & Naive Bayes):**
-   - Logistic Regression (85.37%) and Naive Bayes (83.90%) demonstrated strong, stable performances. Because their parametric decision boundaries (linear hyperplane and Gaussian probabilistic curves) cannot contort to memorize overlapping duplicate points, they remained naturally resilient to duplicate-induced memorization.
-
+1. **Optimal Overall Classifier:** **Logistic Regression** emerged as the top-performing model on the clean, deduplicated dataset, achieving **88.52% accuracy, 87.88% precision, 90.62% recall, and an AUC of 0.920**. Its L2-regularized linear decision boundary captures the overall clinical risk trend smoothly while avoiding overfitting to sample noise.
+2. **Resolution of the 100% KNN Anomaly (Preventing Data Leakage):**
+   - In raw oversampled datasets, KNN ($k=1$) achieved an artificial 100% accuracy because duplicate copies of test patients existed in the training set at distance $d = 0.0$.
+   - By dropping duplicates programmatically in preprocessing, true data leakage is prevented. On unseen patient records, KNN attains an honest **80.33% accuracy** with $k=5$ and Manhattan distance. Setting $k=5$ allows the model to vote across multiple neighbors, effectively damping noise compared to $k=1$ (which achieved 77.05%).
+3. **Controlled Decision Tree Complexity:**
+   - Setting `criterion='entropy'`, `splitter='random'`, and `max_leaf_nodes=10` prevents tree overfitting and constrains the model to 10 interpretable leaf nodes with **80.33% accuracy** and **0.870 ROC-AUC**.
+4. **Clinical Triage & Sensitivity:**
+   - In cardiovascular diagnosis, **Recall (Sensitivity)** is paramount because a False Negative (missing a diseased patient) is life-threatening. Logistic Regression achieved **90.62% recall**, correctly diagnosing 29 out of 32 diseased patients in the held-out test cohort, demonstrating high clinical utility.
