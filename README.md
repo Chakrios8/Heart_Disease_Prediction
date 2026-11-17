@@ -5,13 +5,26 @@ Cardiovascular disease (CVD) is a term that encompasses a range of conditions th
 
 In this project, we designed and evaluated multiple supervised machine learning methodologies to automate the diagnosis of patients with heart disease. The model performances are evaluated based on their ability to accurately distinguish patients who exhibit heart disease (`target = 1`) from healthy individuals (`target = 0`).
 
-# Dataset
+# Dataset & Data Cleaning
 
 The dataset used in this project was retrieved from Kaggle (an extension of the original dataset found on the UCI Machine Learning Repository). Dating back to 1988, the original database combined records from Cleveland, Hungary, Switzerland, and Long Beach V. While the raw study included 76 attributes, our analysis focuses on the standard clinical subset of 14 attributes.
 
 For easy implementation in Python and reproducible execution, the dataset is hosted on GitHub. The raw dataset can be accessed [here](https://raw.githubusercontent.com/Chakrios8/Heart_Disease_Prediction/refs/heads/main/heart.csv).
 
-The raw dataset contains **1,025 patient instances**. During data preprocessing, duplicate entries are removed programmatically (`df.drop_duplicates()`), yielding **302 unique patient records** (138 healthy individuals, 164 diagnosed with heart disease) across the following 14 clinical attributes:
+### In-Code Data Cleaning & Deduplication
+The raw dataset contains **1,025 individual patient instances**. An initial audit reveals that the original 302 patient records were duplicated ~3.4 times. 
+
+To eliminate artificial sample-weighting during Exploratory Data Analysis (EDA) and prevent train-test data leakage during model training, we programmatically deduplicate the dataset immediately upon loading:
+
+```python
+# Programmatic Deduplication immediately after ingestion
+print(f"Raw patient records: {df.shape[0]}")          # 1,025
+print(f"Duplicate records found: {df.duplicated().sum()}")  # 723
+df = df.drop_duplicates().reset_index(drop=True)
+print(f"Clean patient records: {df.shape[0]}")        # 302 unique patients
+```
+
+The clean dataset contains **302 unique patient records** (138 healthy individuals, 164 diagnosed with heart disease) across the following 14 clinical attributes:
 
 | Feature | Description |
 | :--- | :--- |
@@ -36,7 +49,9 @@ The raw dataset contains **1,025 patient instances**. During data preprocessing,
 - **Primary Libraries:** `pandas`, `numpy`, `scikit-learn`, `matplotlib`, `seaborn`
 - **Execution Platform:** Jupyter Notebook / Google Colab
 
-# Data Visualization
+# Exploratory Data Analysis (EDA)
+
+All statistical summaries and exploratory visualizations are computed on the clean, deduplicated cohort ($N = 302$). This guarantees that individual patients are not disproportionately weighted and that correlation coefficients reflect true clinical associations.
 
 ## Initial Dataset Insights
 
@@ -60,19 +75,11 @@ The raw dataset contains **1,025 patient instances**. During data preprocessing,
 
 # Data Pre-Processing
 
-The preprocessing pipeline ensures data integrity, removes leakage, and standardizes variables:
+With the dataset cleaned and explored, the preprocessing pipeline prepares the predictors for modeling:
 
-1. **Deduplication:** The raw Kaggle dataset contains 723 repeated rows resulting from oversampling the original 302 Cleveland Clinic patients. We programmatically deduplicate the dataset in-code to guarantee that identical patient records never appear across both training and testing splits:
+1. **Feature-Target Separation:** Slicing the 14 columns into predictor matrix $X$ (first 13 clinical variables) and ground-truth vector $y$ (`target`).
 
-```python
-# Deduplicate patient records to prevent train-test data leakage
-df = df.drop_duplicates().reset_index(drop=True)
-print(f"Unique patient records after deduplication: {df.shape[0]}")  # 302 unique patients
-```
-
-2. **Feature-Target Separation:** Dividing the 14 columns into predictor matrix $X$ (first 13 clinical variables) and ground-truth vector $y$ (`target`).
-
-3. **Feature Scaling:** Standardizing features using `StandardScaler` to remove variance skewness and ensure distance-based models (such as KNN and Logistic Regression) converge reliably:
+2. **Feature Scaling:** Standardizing features using `StandardScaler` to remove variance skewness and ensure distance-based models (such as KNN and Logistic Regression) converge reliably:
 
 ```python
 X = df.iloc[:, :13]
@@ -82,7 +89,7 @@ scaler = StandardScaler()
 X_scaled = scaler.fit_transform(X)
 ```
 
-4. **Train-Test Split:** Partitioning into an 80% training set (241 instances) and a 20% held-out test set (61 instances: 29 healthy `class 0`, 32 heart disease `class 1`) with a fixed random seed for strict reproducibility:
+3. **Train-Test Split:** Partitioning the 302 instances into an 80% training set (241 instances) and a 20% held-out test set (61 instances: 29 healthy `class 0`, 32 heart disease `class 1`) with a fixed random seed for strict reproducibility:
 
 ```python
 X_train, X_test, y_train, y_test = train_test_split(
