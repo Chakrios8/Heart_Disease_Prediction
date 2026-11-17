@@ -36,19 +36,6 @@ Contained in this dataset are **1,025 individual patient instances** and the fol
 - **Primary Libraries:** `pandas`, `numpy`, `scikit-learn`, `matplotlib`, `seaborn`
 - **Execution Platform:** Jupyter Notebook / Google Colab
 
-# Literature Review
-
-Many machine learning studies have examined the UCI Heart Disease dataset:
-
-1. **Abushariah et al. (2014)** tested two classification approaches: Multilayer Perceptron (MLP) Artificial Neural Network (ANN) and Adaptive Neuro-Fuzzy Inference Systems (ANFIS). The study concluded that ANFIS outperformed ANN on training data, but ANN generalized better on testing data.
-   - *Abushariah, M., Alqudah, A., Adwan, O., & Yousef, R. (2014). Automatic Heart Disease Diagnosis System Based on Artificial Neural Network (ANN) and Adaptive Neuro-Fuzzy Inference Systems (ANFIS) Approaches. Journal of Software Engineering and Applications, 7, 1055-1064.*
-
-2. **Nahar et al. (2013)** employed association rule mining to investigate the factors contributing to heart disease across male and female populations. The study identified chest pain, resting ECG status, and exercise-induced angina as significant high-risk indicators, while also isolating healthy baseline attributes.
-   - *Nahar, J., Imam, T., Tickle, K. S., & Chen, Y. P. P. (2013). Association rule mining to detect factors which contribute to heart disease in males and females. Expert Systems with Applications, 40(4), 1086-1093.*
-
-3. **Ismaeel et al. (2015)** applied the Extreme Learning Machine (ELM) technique to model clinical factors such as age, sex, and serum cholesterol, achieving an accuracy of approximately 80% and demonstrating the feasibility of computerized diagnostic support systems to assist routine checkups.
-   - *Ismaeel, S., Miri, A., & Chourishi, D. (2015). Using the Extreme Learning Machine (ELM) technique for heart disease diagnosis. 2015 IEEE Canada International Humanitarian Technology Conference (IHTC2015), 1-3.*
-
 # Data Visualization
 
 ## Initial Dataset Insights
@@ -337,7 +324,3 @@ The table below summarizes the key evaluation metrics across all four classifica
 4. **Parametric Baselines (Logistic Regression & Naive Bayes):**
    - Logistic Regression (85.37%) and Naive Bayes (83.90%) demonstrated strong, stable performances. Because their parametric decision boundaries (linear hyperplane and Gaussian probabilistic curves) cannot contort to memorize overlapping duplicate points, they remained naturally resilient to duplicate-induced memorization.
 
-# Author & Contributions
-
-- **Author(s):** [Your Name / Team Members]
-- **Tasks Covered:** Data Cleaning & Preprocessing, Exploratory Data Analysis, Hyperparameter Optimization (`GridSearchCV`), Model Development (Logistic Regression, Naive Bayes, KNN, Decision Tree), and Performance Metric Evaluation.
